@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>OT Tracker</title>
+  <meta name="description" content="Track your overtime hours and pay." />
+  <meta name="theme-color" content="#e9fbf2" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="OT Tracker" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon.svg" alt="" width="34" height="34" />
+      <div>
+        <h1>OT Tracker</h1>
+        <p id="topbar-sub">Overtime &amp; pay</p>
+      </div>
+    </div>
+    <button id="install-btn" class="btn pill" hidden>Install</button>
+  </header>
+
+  <main id="app" tabindex="-1"></main>
+
+  <nav class="tabbar glass" aria-label="Main">
+    <button class="tab" data-view="home" aria-label="Home">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="tab" data-view="records" aria-label="Records">
+      <svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
+      <span>Records</span>
+    </button>
+    <button class="fab" id="fab" aria-label="Add overtime">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button class="tab" data-view="holidays" aria-label="Holidays">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="17" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4M12 13l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.3-2.4 1.3.5-2.6-1.9-1.8 2.6-.4z"/></svg>
+      <span>Holidays</span>
+    </button>
+    <button class="tab" data-view="settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- Add / Edit sheet -->
+  <div class="sheet-backdrop" id="sheet" hidden>
+    <div class="sheet glass" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <h2 id="sheet-title">Add Overtime</h2>
+      <form id="entry-form" autocomplete="off" novalidate>
+        <input type="hidden" name="entryId" />
+        <label class="field">
+          <span>Date</span>
+          <input type="date" name="date" required />
+        </label>
+
+        <div class="daytype">
+          <div class="daytype-info">
+            <span class="chip" id="f-chip">Normal Day</span>
+            <small id="f-daynote"></small>
+          </div>
+          <label class="select-mini">
+            <select name="dayTypeOverride" aria-label="Day type">
+              <option value="">Auto</option>
+              <option value="normal">Normal Day</option>
+              <option value="off">Off Day</option>
+              <option value="rest">Rest Day</option>
+              <option value="public">Public Holiday</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row2">
+          <label class="field">
+            <span>From</span>
+            <input type="time" name="start" required />
+          </label>
+          <label class="field">
+            <span>To</span>
+            <input type="time" name="end" required />
+          </label>
+        </div>
+
+        <div class="total-box">
+          <span>Total hours</span>
+          <b id="f-hours">0h</b>
+          <small id="f-overnight" hidden>ends next day</small>
+        </div>
+
+        <label class="field">
+          <span>Description</span>
+          <textarea name="description" rows="2" placeholder="What did you work on?"></textarea>
+        </label>
+
+        <div class="estimate">
+          <div class="estimate-head">
+            <span>Estimated pay</span>
+            <b id="f-amount">RM 0.00</b>
+          </div>
+          <ul id="f-lines"></ul>
+        </div>
+
+        <p class="form-error" id="f-error" hidden></p>
+
+        <div class="sheet-actions">
+          <button type="button" class="btn ghost danger" id="f-delete" hidden>Delete</button>
+          <span class="spacer"></span>
+          <button type="button" class="btn ghost" id="f-cancel">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
