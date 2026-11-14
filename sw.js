@@ -1,6 +1,6 @@
 // Service worker: cache the app shell so OT Tracker works offline.
 // Bump VERSION whenever app files change so users get the update.
-const VERSION = 'ot-tracker-v1';
+const VERSION = 'ot-tracker-v2';
 const ASSETS = [
   './',
   './index.html',

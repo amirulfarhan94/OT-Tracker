@@ -1,6 +1,6 @@
 import {
   DAY_TYPES, DAY_LABELS, DEFAULT_SETTINGS, durationHours, crossesMidnight, detectDayType,
-  calcPay, baseRates, summarize, entryDayType, parseDate, round2,
+  calcPay, baseRates, summarize, entryDayType, parseDate, round2, periodRange, periodKeyOf,
 } from './calc.js';
 import * as store from './store.js';
 
@@ -26,6 +26,10 @@ const shiftMonth = (key, delta) => {
 };
 const RM = (n) => `RM ${Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const hrs = (n) => `${round2(n)}h`;
+const fmtShort = (iso) => {
+  const d = parseDate(iso);
+  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`;
+};
 const fmtDateLong = (iso) => {
   const d = parseDate(iso);
   return `${WEEKDAYS[d.getDay()].slice(0, 3)}, ${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`;
@@ -59,7 +63,7 @@ function download(filename, content, type) {
 // ---------- State ----------
 const state = {
   view: 'home',
-  month: monthKeyOf(new Date()),
+  month: periodKeyOf(isoDate(new Date()), store.getSettings().cutoffDay),
   holidayYear: new Date().getFullYear(),
 };
 
@@ -69,9 +73,14 @@ const ctx = () => {
   return { settings, holidays };
 };
 
+const cutoff = () => store.getSettings().cutoffDay;
+const currentPeriod = () => periodKeyOf(todayISO(), cutoff());
+const range = (key = state.month) => periodRange(key, cutoff());
+
 function monthEntries(key) {
+  const { start, end } = range(key);
   return store.getEntries()
-    .filter((e) => e.date.startsWith(key))
+    .filter((e) => e.date >= start && e.date <= end)
     .sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start));
 }
 
@@ -80,7 +89,10 @@ function monthNav() {
   return `
     <section class="month-nav glass">
       <button class="icon-btn" data-month="-1" aria-label="Previous month">${ICON.left}</button>
-      <b>${monthLabel(state.month)}</b>
+      <div class="month-label">
+        <b>${monthLabel(state.month)}</b>
+        ${cutoff() ? `<small>${fmtShort(range().start)} – ${fmtShort(range().end)}</small>` : ''}
+      </div>
       <button class="icon-btn" data-month="1" aria-label="Next month">${ICON.right}</button>
     </section>`;
 }
@@ -93,11 +105,11 @@ function entryRow(e, settings, holidays) {
   const overnight = crossesMidnight(e.start, e.end) ? ' <small>(+1)</small>' : '';
   return `
     <button class="entry" data-edit="${esc(e.id)}">
-      <div class="entry-date"><b>${d.getDate()}</b><span>${WEEKDAYS[d.getDay()].slice(0, 3)}</span></div>
+      <div class="entry-date"><b>${d.getDate()}</b><span>${MONTHS[d.getMonth()].slice(0, 3)}</span></div>
       <div class="entry-main">
         <div class="entry-top">
           <span class="chip ${type}">${DAY_LABELS[type]}</span>
-          <span class="entry-time">${esc(e.start)} – ${esc(e.end)}${overnight}</span>
+          <span class="entry-time">${WEEKDAYS[d.getDay()].slice(0, 3)} · ${esc(e.start)} – ${esc(e.end)}${overnight}</span>
         </div>
         <p class="entry-desc ${e.description ? '' : 'empty'}">${e.description ? esc(e.description) : 'No description'}</p>
       </div>
@@ -274,6 +286,15 @@ function renderSettings() {
           <label class="field"><span>Off day</span><select name="offDay">${dayOpts(settings.offDay)}</select></label>
           <label class="field"><span>Rest day</span><select name="restDay">${dayOpts(settings.restDay)}</select></label>
         </div>
+        <label class="field"><span>Salary cut-off date</span>
+          <select name="cutoffDay">
+            <option value="0" ${!settings.cutoffDay ? 'selected' : ''}>End of month (no cut-off)</option>
+            ${Array.from({ length: 28 }, (_, i) => i + 1).map((d) => `<option value="${d}" ${Number(settings.cutoffDay) === d ? 'selected' : ''}>${d}${d === 1 || d === 21 ? 'st' : d === 2 || d === 22 ? 'nd' : d === 3 || d === 23 ? 'rd' : 'th'} of the month</option>`).join('')}
+          </select>
+        </label>
+        <p class="hint" id="cutoff-hint">${settings.cutoffDay
+          ? `OT is grouped by pay period. Example: ${monthLabel(currentPeriod())} = ${fmtDateLong(range(currentPeriod()).start)} to ${fmtDateLong(range(currentPeriod()).end)}.`
+          : 'OT is grouped by calendar month (1st to end of month).'}</p>
         <label class="field"><span>Monthly OT limit (hours)</span><input type="number" inputmode="numeric" min="1" step="1" name="monthlyCapHours" value="${settings.monthlyCapHours}" /></label>
       </section>
 
@@ -358,7 +379,8 @@ function lastTimes() {
 function openSheet(entry) {
   const isEdit = Boolean(entry);
   const t = lastTimes();
-  const defaultDate = state.month === monthKeyOf(new Date()) ? todayISO() : `${state.month}-01`;
+  const r = range();
+  const defaultDate = todayISO() >= r.start && todayISO() <= r.end ? todayISO() : r.start;
   const e = entry || { date: defaultDate, start: t.start, end: t.end, description: '', dayTypeOverride: '' };
   form.reset();
   form.entryId.value = e.id || '';
@@ -435,7 +457,7 @@ form.addEventListener('submit', (ev) => {
     return;
   }
   store.saveEntry(data);
-  state.month = data.date.slice(0, 7);
+  state.month = periodKeyOf(data.date, cutoff());
   closeSheet();
   toast(data.id ? 'Overtime updated' : 'Overtime saved');
   render();
@@ -464,6 +486,7 @@ function saveSettingsFromForm(f) {
   s.offDay = Number(f.offDay.value);
   s.restDay = Number(f.restDay.value);
   s.monthlyCapHours = num(f.monthlyCapHours.value, DEFAULT_SETTINGS.monthlyCapHours);
+  s.cutoffDay = Number(f.cutoffDay.value) || 0;
   $$('[data-rate]', f).forEach((i) => { s.rates[i.dataset.rate] = num(i.value, DEFAULT_SETTINGS.rates[i.dataset.rate]); });
   store.saveSettings(s);
   return s;
@@ -481,7 +504,8 @@ app.addEventListener('change', (ev) => {
   if (ev.target.closest('#settings-form')) {
     saveSettingsFromForm(ev.target.closest('#settings-form'));
     toast('Settings saved');
-    if (ev.target.matches('[name="normalHours"], [name="daysPerMonth"]')) render();
+    if (ev.target.matches('[name="cutoffDay"]')) state.month = currentPeriod();
+    if (ev.target.matches('[name="normalHours"], [name="daysPerMonth"], [name="cutoffDay"]')) render();
   }
   if (ev.target.id === 'restore-input') {
     const file = ev.target.files[0];
@@ -490,6 +514,7 @@ app.addEventListener('change', (ev) => {
       try {
         if (!confirm('Restore this backup? Current data will be replaced.')) return;
         store.importBackup(JSON.parse(txt));
+        state.month = currentPeriod();
         toast('Backup restored');
         render();
       } catch (e) {
@@ -572,6 +597,7 @@ function handleAction(action) {
     case 'clear':
       if (confirm('Delete ALL overtime records, settings and holidays? This cannot be undone.')) {
         store.clearAll();
+        state.month = currentPeriod();
         toast('All data deleted');
         render();
       }
@@ -602,6 +628,13 @@ $('#install-btn').addEventListener('click', async () => {
 window.addEventListener('appinstalled', () => { $('#install-btn').hidden = true; });
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController || reloaded) return; // first install: no reload needed
+    reloaded = true;
+    location.reload(); // pick up the new version
+  });
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
 

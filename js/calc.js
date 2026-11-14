@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS = {
   offDay: 6,            // 0 = Sunday … 6 = Saturday
   restDay: 0,
   monthlyCapHours: 104, // OT limit per month
+  cutoffDay: 0,         // salary cut-off day (1–28); 0 = end of month
   rates: {
     normal: 1.5,        // × HRP per hour
     offWithin: 1.0,     // × HRP per hour, up to normalHours
@@ -63,6 +64,29 @@ export function crossesMidnight(start, end) {
 export function parseDate(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d);
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const isoOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+/**
+ * Pay period named by its pay month (key 'YYYY-MM').
+ * cutoffDay 0 → calendar month. cutoffDay 20 → 21st of previous month to 20th of this month.
+ */
+export function periodRange(key, cutoffDay = 0) {
+  const [y, m] = key.split('-').map(Number);
+  const c = Number(cutoffDay) || 0;
+  if (!c) return { start: isoOf(new Date(y, m - 1, 1)), end: isoOf(new Date(y, m, 0)) };
+  return { start: isoOf(new Date(y, m - 2, c + 1)), end: isoOf(new Date(y, m - 1, c)) };
+}
+
+/** Pay period key ('YYYY-MM') that a date belongs to. */
+export function periodKeyOf(dateStr, cutoffDay = 0) {
+  const c = Number(cutoffDay) || 0;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!c || d <= c) return `${y}-${pad2(m)}`;
+  const next = new Date(y, m, 1);
+  return `${next.getFullYear()}-${pad2(next.getMonth() + 1)}`;
 }
 
 /** holidays: array of { date: 'YYYY-MM-DD', name } */

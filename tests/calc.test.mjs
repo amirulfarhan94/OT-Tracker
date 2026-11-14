@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   durationHours, crossesMidnight, detectDayType, calcPay, baseRates, summarize, mergeSettings,
+  periodRange, periodKeyOf,
 } from '../js/calc.js';
 
 // Salary RM2,600 → ORP RM100, HRP RM12.50 (8h day, 26 days)
@@ -77,4 +78,22 @@ test('summary with override', () => {
   assert.equal(sum.amount, 393.75);
   assert.equal(sum.byType.off.amount, 137.5);
   assert.equal(sum.byType.public.count, 1);
+});
+
+test('pay period: calendar month when no cut-off', () => {
+  assert.deepEqual(periodRange('2026-11', 0), { start: '2026-11-01', end: '2026-11-30' });
+  assert.deepEqual(periodRange('2028-02', 0), { start: '2028-02-01', end: '2028-02-29' });
+  assert.equal(periodKeyOf('2026-11-25', 0), '2026-11');
+});
+
+test('pay period: cut-off day', () => {
+  assert.deepEqual(periodRange('2026-11', 20), { start: '2026-10-21', end: '2026-11-20' });
+  assert.deepEqual(periodRange('2027-01', 25), { start: '2026-12-26', end: '2027-01-25' });
+  // cut-off 28: Feb (non-leap) period ends 28 Feb, March starts 1 Mar — no gaps
+  assert.deepEqual(periodRange('2027-02', 28), { start: '2027-01-29', end: '2027-02-28' });
+  assert.deepEqual(periodRange('2027-03', 28), { start: '2027-03-01', end: '2027-03-28' });
+  assert.equal(periodKeyOf('2026-11-20', 20), '2026-11');
+  assert.equal(periodKeyOf('2026-11-21', 20), '2026-12');
+  assert.equal(periodKeyOf('2026-12-31', 20), '2027-01');
+  assert.equal(periodKeyOf('2026-10-21', 20), '2026-11');
 });

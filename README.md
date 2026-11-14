@@ -8,6 +8,7 @@ A Progressive Web App (PWA) for logging overtime and estimating OT pay using Mal
 - **Day type detected automatically:** Normal Day, Off Day (Saturday), Rest Day (Sunday) or Public Holiday (Selangor). You can override it for each entry.
 - **Pay estimate:** shown live while you fill in an entry, plus monthly totals and a breakdown by day type.
 - **Monthly limit:** progress bar towards the 104 h monthly OT limit.
+- **Salary cut-off date:** optionally group OT by pay period instead of calendar month (e.g. cut-off 20th: "November" = 21 Oct – 20 Nov). Set it in Settings.
 - **Public holiday list:** Selangor 2026–2027 built in; add, remove or edit dates (e.g. cuti peristiwa).
 - **Export and backup:** CSV export per month or for all entries, JSON backup and restore.
 - **Configurable:** salary, normal hours, off/rest days and all rates in Settings.
